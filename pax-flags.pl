@@ -29,62 +29,95 @@ $ENV{'PATH'} = '/sbin:/usr/sbin:/bin:/usr/bin';
 
 use strict;
 use warnings;
-use Getopt::Long;
+use v5.10.1;
+
+use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my $FlagRun;
+my ( $FlagRun, $DryRun, %Flags, %Conf);
 my $PaXctl = "/sbin/paxctl";
-my %Flags;
 my $ConfigFile = "/etc/pax-flags.ini";
-my %Conf;
-my %ini;
 
 sub ReadConfig () {
-	tie %ini, 'Config::iniFiles', ( -file => $ConfigFile );
+	my %ini;
+	my $rv = 0;
+	tie %ini, 'Config::IniFiles', ( -file => $ConfigFile );
 
 	foreach my $key (keys %ini) {
 		if ( exists $ini{$key}{'path'} ) {
 			if ( ! -f $ini{$key}{'path'} ) {
+				print STDERR "Path not found $ini{$key}{'path'}\n";
 				next;
 			}
 		} else {
 			print STDERR "Path is mandatory [$key]\n";
+			$rv = 1;
 		}
 		if ( exists $ini{$key}{'flags'} ) {
-			if ( ! $ini{$key}{'flags'} =~ /^([\-PpEeMmRrXxSs]{1-6}$)/ ) {
+			if ( ! $ini{$key}{'flags'} =~ /^([PpEeMmRrXxSs]{1-6}$)/ ) {
+				print STDERR "Something wrong with flags in $ini{$key}\n";
 				next;
+			} else {
+				$ini{$key}{'fullflags'} = CreateFlags($ini{$key}{'flags'});
 			}
+		} else {
+			print STDERR "Flags are mandatory [$key]\n";
+			$rv = 1;
 		}
+
+		die if $rv == 1;
 
 		$Conf{$key}{'path'} = $ini{$key}{'path'};
 		$Conf{$key}{'flags'} = $ini{$key}{'flags'};
+		$Conf{$key}{'fullflags'} = $ini{$key}{'fullflags'};
+
 	}
 
 	untie %ini;
 }
+
+sub CreateFlags ($) {
+	my $flag = shift;
+	my @flags = qw( P p E e M m R r X x S s);
+	my @i = split (//, $flag);
+	my ( %tmp, $fullflag );
+
+	foreach my $j ( @i ) {
+		$tmp{$j} = $j;
+	}
+
+	foreach my $f ( @flags ) {
+		if (( $tmp{$f} ) && ( $tmp{$f} eq $f )) {
+			$fullflag = $fullflag . $f;
+		} else {
+			$fullflag = $fullflag . "-";
+		}
+	}
+	return ($fullflag);
+}
+
 
 sub SetFlags () {
 	foreach my $key (keys %Conf) {
 
 		my $Bin = $Conf{$key}{'path'};
 		my $Flags = $Conf{$key}{'flags'};
+		my $FullFlags = $Conf{$key}{'fullflags'};
 
-		if ( -f $Bin ) {
-			open (PAX, "$PaXctl -v $Bin 2>/dev/null |") or die ("Couldn't open $PaXctl");
+		if ( -x $Bin ) {
+			open (PAX, "$PaXctl -v $Bin 2>&1 |") or die ("Couldn't open $PaXctl");
 
 			while (<PAX>) {
 				chomp;
-				if (( m/^\- PaX flags\: [\-pemrxsPEMRXS]+ $Bin$/ ) && ( m/^\- PaX flags\: $Flags \[$Bin\]$/ )) {
+				if ( m/^\- PaX flags\: $FullFlags \[$Bin\]$/ ) {
 					print "Nothing to do for $Bin\n" if $DEBUG;
-				} elsif ( ! m/^\- PaX flags\: $Flags \[$Bin\]$/ ) {
+				} elsif (( m/^\- PaX flags\: .* \[$Bin\]$/ ) && ( ! m/^\- PaX flags\: $FullFlags \[$Bin\]$/ )) {
 					print "Need to set flags on $Bin\n" if $DEBUG;
-					$Flags =~ s/-//g;
-					system("$PaXctl -z$Flags $Bin");
+					system("$PaXctl -z$Flags $Bin") unless $DryRun;
 				} elsif ( m/^file .* does not have a PT_PAX_FLAGS program header, try conversion$/ ) {
 					print "Need to convert and set flags on $Bin\n" if $DEBUG;
-					$Flags =~ s/-//g;
-					system("$PaXctl -zC$Flags $Bin");
+					system("$PaXctl -zC$Flags $Bin") unless $DryRun;
 				}
 			}
 			close PAX;
@@ -99,6 +132,8 @@ sub Version () {
 sub Help () {
 	Version;
 	print	"\n",
+		"-s, --setflags	Apply config on binaries\n",
+		"-n, --dry-run	Do a dry run\n",
 		"-c, --config	Set configfile location\n",
 		"-d, --debug	Show some debug messages\n",
 		"-v, --version	Show version of this script\n",
@@ -111,6 +146,7 @@ sub Help () {
 
 GetOptions (
 	's|setflags'	=> \$FlagRun,
+	'n|dry-run'	=> \$DryRun,
 	'c|config=s'	=> \$ConfigFile,
 	'd|debug'	=> \$DEBUG,
 	'v|version'	=> sub { Version(); exit 0 },
@@ -118,8 +154,8 @@ GetOptions (
 );
 
 if ( $FlagRun ) {
-	ReadConfig;
-	SetFlags;
+	ReadConfig();
+	SetFlags();
 
 	exit 0;
 }
