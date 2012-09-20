@@ -1,6 +1,6 @@
 #!/usr/bin/perl -T
 #
-# dpkg-grsec.pl
+# pax-flags.pl
 #
 # Copyright (C) 2012, Sander Klein <roedie@roedie.nl>
 #
@@ -22,7 +22,7 @@
 # INI Format:
 # [grub-probe]
 # path = /usr/sbin/grub-probe
-# flags = -p---m------
+# flags = pm
 #
 
 $ENV{'PATH'} = '/sbin:/usr/sbin:/bin:/usr/bin';
