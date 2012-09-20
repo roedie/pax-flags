@@ -1,0 +1,13 @@
+Source: pax-flags
+Section: admin
+Priority: extra
+Maintainer: Sander Klein <roedie@roedie.nl>
+Build-Depends: debhelper (>= 5)
+Standards-Version: 3.7.2
+
+Package: pax-flags
+Architecture: all
+Depends: debconf (>= 0.2.26) | debconf-2.0, paxctl (>= 0.7)
+Description: Small tool to maintain pax flags on binaries
+ pax-flags may be used to maintain pax-flags on binaries.
+
