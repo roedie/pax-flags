@@ -35,7 +35,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my ( $FlagRun, $DryRun, %Flags, %Conf);
+my ( $FlagRun, $GroupRun, $DryRun, %Flags, %Conf );
 my $PaXctl = "/sbin/paxctl";
 my $ConfigFile = "/etc/pax-flags.ini";
 
@@ -45,6 +45,25 @@ sub ReadConfig () {
 	tie %ini, 'Config::IniFiles', ( -file => $ConfigFile );
 
 	foreach my $key (keys %ini) {
+		if ( $key eq "GROUP-ID" ) {
+			if ( $ini{'GROUP-ID'}{'trusted_path_gid'} =~ /^([0-9]+)$/ ) {
+				$Conf{'GROUP-ID'}{'gr-tpe'} = $1;
+			}
+			if ( $ini{'GROUP-ID'}{'socket_all_gid'} =~ /^([0-9]+)$/ ) {
+				$Conf{'GROUP-ID'}{'gr-asg'} = $1;
+			}
+			if ( $ini{'GROUP-ID'}{'socket_client_gid'} =~ /^([0-9]+)$/ ) {
+				$Conf{'GROUP-ID'}{'gr-csg'} = $1;
+			}
+			if ( $ini{'GROUP-ID'}{'socket_server_gid'} =~ /^([0-9]+)$/ ) {
+				$Conf{'GROUP-ID'}{'gr-ssg'} = $1;
+			}
+			if ( $ini{'GROUP-ID'}{'proc_usergroup'} =~ /^([0-9]+)$/ ) {
+				$Conf{'GROUP-ID'}{'gr-proc'} = $1;
+			}
+			next;
+		}
+
 		if ( exists $ini{$key}{'path'} ) {
 			if ( ! -f $ini{$key}{'path'} ) {
 				print STDERR "Path not found $ini{$key}{'path'}\n";
@@ -125,6 +144,22 @@ sub SetFlags () {
 	}
 }
 
+sub GroupRun () {
+	my @groups = ("gr-tpe", "gr-asg", "gr-csg", "gr-ssg", "gr-proc");
+
+	foreach ( @groups ) {
+		if (( ! getgrnam($_) ) && ( ! getgrgid($Conf{'GROUP-ID'}{$_}) )) {
+			system("/usr/sbin/addgroup --gid $Conf{'GROUP-ID'}{$_} $_");
+		} elsif (( getgrnam($_) eq $Conf{'GROUP-ID'}{$_} ) && ( getgrgid($Conf{'GROUP-ID'}{$_}) eq $_ )) {
+			print "Group already exists $_\n";
+			next;
+		} else {
+			print "Something is wrong. Group name or GID already taken: $Conf{'GROUP-ID'}{$_}, $_\n";
+		}
+	}
+}
+
+
 sub Version () {
 	print "dpkg-grsec.pl 0.20120909 (C) Sander Klein <roedie\@roedie.nl>\n";
 }
@@ -132,12 +167,13 @@ sub Version () {
 sub Help () {
 	Version;
 	print	"\n",
-		"-s, --setflags	Apply config on binaries\n",
-		"-n, --dry-run	Do a dry run\n",
-		"-c, --config	Set configfile location\n",
-		"-d, --debug	Show some debug messages\n",
-		"-v, --version	Show version of this script\n",
-		"-h, --help	Show this help\n\n";
+		"-s, --setflags		Apply config on binaries\n",
+		"-g, --create-groups	Create the groups from config\n",
+		"-n, --dry-run		Do a dry run\n",
+		"-c, --config		Set configfile location\n",
+		"-d, --debug		Show some debug messages\n",
+		"-v, --version		Show version of this script\n",
+		"-h, --help		Show this help\n\n";
 }
 
 ###
@@ -145,14 +181,20 @@ sub Help () {
 ###
 
 GetOptions (
-	's|setflags'	=> \$FlagRun,
-	'n|dry-run'	=> \$DryRun,
-	'c|config=s'	=> \$ConfigFile,
-	'd|debug'	=> \$DEBUG,
-	'v|version'	=> sub { Version(); exit 0 },
-	'h|help'	=> sub { Help(); exit 0}
+	's|setflags'		=> \$FlagRun,
+	'g|create-groups'	=> \$GroupRun,
+	'n|dry-run'		=> \$DryRun,
+	'c|config=s'		=> \$ConfigFile,
+	'd|debug'		=> \$DEBUG,
+	'v|version'		=> sub { Version(); exit 0 },
+	'h|help'		=> sub { Help(); exit 0}
 );
 
+if ( $GroupRun ) {
+	ReadConfig();
+	GroupRun();
+}
+	
 if ( $FlagRun ) {
 	ReadConfig();
 	SetFlags();
