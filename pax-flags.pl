@@ -124,6 +124,7 @@ sub CreateFlags ($) {
 
 sub SetFlags () {
 	foreach my $key (keys %Conf) {
+		next if $key eq 'GROUP-ID';
 
 		my $Bin = $Conf{$key}{'path'};
 		my $Flags = $Conf{$key}{'flags'};
@@ -187,6 +188,7 @@ if ( @ARGV < 1 ) {
 	Help();
 	exit 0;
 }
+
 GetOptions (
 	's|setflags'		=> \$FlagRun,
 	'g|create-groups'	=> \$GroupRun,
