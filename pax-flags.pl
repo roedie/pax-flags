@@ -190,6 +190,11 @@ GetOptions (
 	'h|help'		=> sub { Help(); exit 0}
 );
 
+if ( @ARGV < 1 ) {
+	Help();
+	exit 0;
+}
+
 if ( $GroupRun ) {
 	ReadConfig();
 	GroupRun();
