@@ -35,7 +35,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my ( $FlagRun, $GroupRun, $DryRun, %Flags, %Conf );
+my ( $FlagRun, $GroupRun, $DryRun, %Flags, %Conf, @Groups );
 my $PaXctl = "/sbin/paxctl";
 my $ConfigFile = "/etc/pax-flags.ini";
 
@@ -47,18 +47,23 @@ sub ReadConfig () {
 	foreach my $key (keys %ini) {
 		if ( $key eq "GROUP-ID" ) {
 			if ( $ini{'GROUP-ID'}{'trusted_path_gid'} =~ /^([0-9]+)$/ ) {
+				push(@Groups, 'gr-tpe');
 				$Conf{'GROUP-ID'}{'gr-tpe'} = $1;
 			}
 			if ( $ini{'GROUP-ID'}{'socket_all_gid'} =~ /^([0-9]+)$/ ) {
+				push(@Groups, 'gr-asg');
 				$Conf{'GROUP-ID'}{'gr-asg'} = $1;
 			}
 			if ( $ini{'GROUP-ID'}{'socket_client_gid'} =~ /^([0-9]+)$/ ) {
+				push(@Groups, 'gr-csg');
 				$Conf{'GROUP-ID'}{'gr-csg'} = $1;
 			}
 			if ( $ini{'GROUP-ID'}{'socket_server_gid'} =~ /^([0-9]+)$/ ) {
+				push(@Groups, 'gr-ssg');
 				$Conf{'GROUP-ID'}{'gr-ssg'} = $1;
 			}
 			if ( $ini{'GROUP-ID'}{'proc_usergroup'} =~ /^([0-9]+)$/ ) {
+				push(@Groups, 'gr-proc');
 				$Conf{'GROUP-ID'}{'gr-proc'} = $1;
 			}
 			next;
@@ -145,9 +150,7 @@ sub SetFlags () {
 }
 
 sub GroupRun () {
-	my @groups = ("gr-tpe", "gr-asg", "gr-csg", "gr-ssg", "gr-proc");
-
-	foreach ( @groups ) {
+	foreach ( @Groups ) {
 		if (( ! getgrnam($_) ) && ( ! getgrgid($Conf{'GROUP-ID'}{$_}) )) {
 			system("/usr/sbin/addgroup --gid $Conf{'GROUP-ID'}{$_} $_");
 		} elsif (( getgrnam($_) eq $Conf{'GROUP-ID'}{$_} ) && ( getgrgid($Conf{'GROUP-ID'}{$_}) eq $_ )) {
@@ -180,6 +183,10 @@ sub Help () {
 # Logic starts here
 ###
 
+if ( @ARGV < 1 ) {
+	Help();
+	exit 0;
+}
 GetOptions (
 	's|setflags'		=> \$FlagRun,
 	'g|create-groups'	=> \$GroupRun,
@@ -190,10 +197,6 @@ GetOptions (
 	'h|help'		=> sub { Help(); exit 0}
 );
 
-if ( @ARGV < 1 ) {
-	Help();
-	exit 0;
-}
 
 if ( $GroupRun ) {
 	ReadConfig();
