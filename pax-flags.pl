@@ -35,7 +35,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my ( $FlagRun, $GroupRun, $DryRun, %Flags, %Conf, @Groups );
+my ( $FlagRun, $GroupRun, $DelGroups, $DryRun, %Flags, %Conf, @Groups );
 my $PaXctl = "/sbin/paxctl";
 my $ConfigFile = "/etc/pax-flags.ini";
 
@@ -163,6 +163,16 @@ sub GroupRun () {
 	}
 }
 
+sub GroupDel () {
+	foreach ( @Groups ) {
+		if ( getgrnam($_) ) {
+			print "Deleting group: $_\n";
+			system("/usr/sbin/groupdel $_\n");
+		} else {
+			print "Group does not exist: $_\n" if $DEBUG;
+		}
+	}
+}
 
 sub Version () {
 	print "dpkg-grsec.pl 0.20120909 (C) Sander Klein <roedie\@roedie.nl>\n";
@@ -173,6 +183,7 @@ sub Help () {
 	print	"\n",
 		"-s, --setflags		Apply config on binaries\n",
 		"-g, --create-groups	Create the groups from config\n",
+		"-r, --del-groups	Delete the groups from config\n",
 		"-n, --dry-run		Do a dry run\n",
 		"-c, --config		Set configfile location\n",
 		"-d, --debug		Show some debug messages\n",
@@ -192,6 +203,7 @@ if ( @ARGV < 1 ) {
 GetOptions (
 	's|setflags'		=> \$FlagRun,
 	'g|create-groups'	=> \$GroupRun,
+	'r|del-groups'		=> \$DelGroups,
 	'n|dry-run'		=> \$DryRun,
 	'c|config=s'		=> \$ConfigFile,
 	'd|debug'		=> \$DEBUG,
@@ -204,7 +216,12 @@ if ( $GroupRun ) {
 	ReadConfig();
 	GroupRun();
 }
-	
+
+if ( $DelGroups ) {
+	ReadConfig();
+	GroupDel();
+}
+
 if ( $FlagRun ) {
 	ReadConfig();
 	SetFlags();
