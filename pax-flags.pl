@@ -175,7 +175,7 @@ sub GroupDel () {
 }
 
 sub Version () {
-	print "dpkg-grsec.pl 0.20120909 (C) Sander Klein <roedie\@roedie.nl>\n";
+	print "pax-flags.pl 0.20120922 (C) Sander Klein <roedie\@roedie.nl>\n";
 }
 
 sub Help () {
