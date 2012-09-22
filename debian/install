@@ -1,2 +1,3 @@
+debian/grsec.conf /etc/sysctl.d/grsec.conf
 pax-flags.pl	/usr/sbin
 pax-flags.ini	/etc
