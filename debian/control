@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: pax-flags
 Architecture: all
-Depends: debconf (>= 0.2.26) | debconf-2.0, paxctl (>= 0.7)
+Depends: debconf (>= 0.2.26) | debconf-2.0, paxctl (>= 0.7), libconfig-inifiles-perl (>= 2.75)
 Description: Small tool to maintain pax flags on binaries
  pax-flags may be used to maintain pax-flags on binaries.
 
