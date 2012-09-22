@@ -1,3 +1,9 @@
+pax-flags (0.20120922-1) unstable; urgency=low
+
+  * First usable release.
+
+ -- Sander Klein <roedie@roedie.nl>  Sat, 22 Sep 2012 21:50:39 +0200
+
 pax-flags (0.20120920-1) unstable; urgency=low
 
   * Initial release.
