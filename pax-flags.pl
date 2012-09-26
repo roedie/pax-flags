@@ -35,7 +35,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my ( $FlagRun, $GroupRun, $DelGroups, $DryRun, %Flags, %Conf, @Groups );
+my ( $PaxFlagRun, $GroupRun, $DelGroups, $DryRun, %Flags, %Conf, @Groups );
 my $PaXctl = "/sbin/paxctl";
 my $ConfigFile = "/etc/pax-flags.ini";
 
@@ -122,7 +122,7 @@ sub CreateFlags ($) {
 }
 
 
-sub SetFlags () {
+sub PaxSetFlags () {
 	foreach my $key (keys %Conf) {
 		next if $key eq 'GROUP-ID';
 
@@ -181,7 +181,7 @@ sub Version () {
 sub Help () {
 	Version;
 	print	"\n",
-		"-s, --setflags		Apply config on binaries\n",
+		"-s, --setflags		Apply config on binaries using paxctl\n",
 		"-g, --create-groups	Create the groups from config\n",
 		"-r, --del-groups	Delete the groups from config\n",
 		"-n, --dry-run		Do a dry run\n",
@@ -201,7 +201,7 @@ if ( @ARGV < 1 ) {
 }
 
 GetOptions (
-	's|setflags'		=> \$FlagRun,
+	's|setflags'		=> \$PaxFlagRun,
 	'g|create-groups'	=> \$GroupRun,
 	'r|del-groups'		=> \$DelGroups,
 	'n|dry-run'		=> \$DryRun,
@@ -222,9 +222,9 @@ if ( $DelGroups ) {
 	GroupDel();
 }
 
-if ( $FlagRun ) {
+if ( $PaxFlagRun ) {
 	ReadConfig();
-	SetFlags();
+	PaxSetFlags();
 
 	exit 0;
 }
