@@ -35,7 +35,7 @@ use Getopt::Long qw(:config bundling no_ignore_case);
 use Config::IniFiles;
 
 my $DEBUG = 0;
-my ( $PaxFlagRun, $GroupRun, $DelGroups, $DryRun, %Flags, %Conf, @Groups );
+my ( $PaxFlagRun, $Header, $Xattr, $GroupRun, $DelGroups, $DryRun, %Flags, %Conf, @Groups );
 my $PaXctl = "/sbin/paxctl";
 my $ConfigFile = "/etc/pax-flags.ini";
 
@@ -150,6 +150,31 @@ sub PaxSetFlags () {
 	}
 }
 
+sub XattrSetFlags () {
+	foreach my $key (keys %Conf) {
+		next if $key eq 'GROUP-ID';
+
+		my $Bin = $Conf{$key}{'path'};
+		my $Flags = $Conf{$key}{'flags'};
+		my $FullFlags = $Conf{$key}{'fullflags'};
+
+		if ( -x $Bin ) {
+			open (XATTR, "/usr/bin/getfattr -n user.pax.flags $Bin 2>&1 |" ) or die ("getfattr not installed?\n");
+
+			while (<XATTR>) {
+				chomp;
+				if ( m/^user\.pax\.flags\=\"$Flags\"$/ ) {
+					print "Nothing to do for $Bin\n" if $DEBUG;
+				} elsif (( m/^user\.pax\.flags\=\".*\"$/ ) || ( m/^$Bin\: user\.pax\.flags\: No such attribute$/ )) {
+					print "Need to set flags on $Bin\n" if $DEBUG;
+					system("/usr/bin/setfattr -n user.pax.flags -v \"$Flags\" $Bin") unless $DryRun;
+				}
+			}
+			close XATTR;
+		}
+	}
+}
+
 sub GroupRun () {
 	foreach ( @Groups ) {
 		if (( ! getgrnam($_) ) && ( ! getgrgid($Conf{'GROUP-ID'}{$_}) )) {
@@ -182,6 +207,8 @@ sub Help () {
 	Version;
 	print	"\n",
 		"-s, --setflags		Apply config on binaries using paxctl\n",
+		"-H, --header		Use PaX headers\n",
+		"-x, --xattr		Use extened attributes\n",
 		"-g, --create-groups	Create the groups from config\n",
 		"-r, --del-groups	Delete the groups from config\n",
 		"-n, --dry-run		Do a dry run\n",
@@ -202,6 +229,8 @@ if ( @ARGV < 1 ) {
 
 GetOptions (
 	's|setflags'		=> \$PaxFlagRun,
+	'H|header'		=> \$Header,
+	'x|xattr'		=> \$Xattr,
 	'g|create-groups'	=> \$GroupRun,
 	'r|del-groups'		=> \$DelGroups,
 	'n|dry-run'		=> \$DryRun,
@@ -224,8 +253,8 @@ if ( $DelGroups ) {
 
 if ( $PaxFlagRun ) {
 	ReadConfig();
-	PaxSetFlags();
-
+	PaxSetFlags() if $Header;
+	XattrSetFlags() if $Xattr;
 	exit 0;
 }
 
